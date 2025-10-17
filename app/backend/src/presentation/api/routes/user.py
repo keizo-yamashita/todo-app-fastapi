@@ -15,6 +15,8 @@ from src.presentation.api.schema.error_response import (
     ValidationErrorResponse,
 )
 from src.presentation.api.schema.safe_str import SafeStr
+from src.presentation.api.schema.user.create_user_request import CreateUserRequest
+from src.presentation.api.schema.user.create_user_response import CreateUserResponse
 from src.presentation.api.schema.user.delete_user_response import DeleteUserResponse
 from src.presentation.api.schema.user.filter_user_response import FilterUserResponse
 from src.presentation.api.schema.user.find_user_response import FindUserResponse
@@ -26,6 +28,7 @@ from src.shared.errors.codes import (
 from src.shared.errors.errors import (
     ExpectedUseCaseError,
 )
+from src.usecase.user.create_user_usecase import CreateUserUseCase
 from src.usecase.user.delete_user_usecase import DeleteUserUseCase
 from src.usecase.user.filter_user_usecase import FilterUserUseCase
 from src.usecase.user.find_user_usecase import FindUserUseCase
@@ -33,6 +36,50 @@ from src.usecase.user.find_user_usecase import FindUserUseCase
 user_router = APIRouter(
     tags=["users"],
 )
+
+
+@user_router.post(
+    "/users",
+    summary="ユーザーを作成する",
+    description="新しいユーザーを作成する",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_201_CREATED: {"model": CreateUserResponse},
+        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
+        status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse},
+        status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": ValidationErrorResponse},
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": ErrorResponse},
+    },
+)
+async def create_user(
+    request: CreateUserRequest,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> CreateUserResponse:
+    """新しいユーザーを作成する。
+
+    メールアドレスと名前を指定して新しいユーザーを作成する。
+    メールアドレスが既に登録されている場合は400エラーを返す。
+    """
+    try:
+        user_repository = get_user_repository(session)
+        user = await CreateUserUseCase(user_repository).execute(request)
+        return CreateUserResponse(
+            user=UserSchema(
+                id=user.id.value,
+                email=user.email.value,
+                name=user.name.value if user.name else "",
+                role=user.role.value.value,
+                created_at=user.created_at,
+            ),
+        )
+    except ExpectedUseCaseError as e:
+        if e.code == UserErrorCode.EmailAlreadyExists:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=e.code.value,
+            ) from e
+        raise
 
 
 @user_router.get(
