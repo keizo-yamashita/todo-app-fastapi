@@ -28,6 +28,6 @@ class CreateUserRequest(BaseModel):
         Field(
             description="ユーザー名",
             min_length=1,
-            max_length=255,
+            max_length=100,
         ),
     ]

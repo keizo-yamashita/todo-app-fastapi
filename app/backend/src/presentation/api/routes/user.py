@@ -68,13 +68,18 @@ async def create_user(
             user=UserSchema(
                 id=user.id.value,
                 email=user.email.value,
-                name=user.name.value if user.name else "",
+                name=user.name.value,
                 role=user.role.value.value,
                 created_at=user.created_at,
             ),
         )
     except ExpectedUseCaseError as e:
         if e.code == UserErrorCode.EmailAlreadyExists:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=e.code.value,
+            ) from e
+        if e.code == CommonErrorCode.InvalidValue:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=e.code.value,
@@ -109,7 +114,7 @@ async def filter_user(
             UserSchema(
                 id=user.id.value,
                 email=user.email.value,
-                name=user.name.value if user.name else "",
+                name=user.name.value,
                 role=user.role.value.value,
                 created_at=user.created_at,
             )
@@ -153,7 +158,7 @@ async def find_user(
             user=UserSchema(
                 id=user.id.value,
                 email=user.email.value,
-                name=user.name.value if user.name else "",
+                name=user.name.value,
                 role=user.role.value.value,
                 created_at=user.created_at,
             ),
