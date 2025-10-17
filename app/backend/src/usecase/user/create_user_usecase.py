@@ -11,6 +11,7 @@ from src.domain.user.email_address import EmailAddress
 from src.domain.user.name import UserName
 from src.domain.user.user import User
 from src.log.logger import logger
+from src.shared.errors.codes import CommonErrorCode
 from src.shared.errors.errors import (
     ExpectedBusinessError,
     ExpectedTechnicalError,
@@ -66,6 +67,16 @@ class CreateUserUseCase:
                 email=created_user.email.value,
             )
 
+        except ValueError as e:
+            # ドメインオブジェクトのバリデーションエラー
+            logger.info(
+                "ユーザー作成に失敗しました（バリデーションエラー）",
+                error=str(e),
+            )
+            raise ExpectedUseCaseError(
+                code=CommonErrorCode.InvalidValue,
+                details={"error": str(e)},
+            ) from e
         except (ExpectedBusinessError, ExpectedTechnicalError) as e:
             logger.info(
                 "ユーザー作成に失敗しました",
