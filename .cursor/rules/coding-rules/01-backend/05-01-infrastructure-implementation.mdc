@@ -1,0 +1,144 @@
+---
+globs: app/backend/src/infrastructure/**/*.py
+alwaysApply: false
+---
+# インフラ層実装ルール
+
+## 概要
+
+インフラ層の実装ルールを記載します。
+新しいリポジトリを実装する際は、このルールに従ってください。
+
+> **注記**: このドキュメントのサンプルコードでは、文章量削減のためコメントを省略しています。
+> 実際の実装では、`04-python-coding-style.mdc`に従ってdocstringとインラインコメントを必ず記載してください。
+
+## 1. ディレクトリ構造
+
+### 例：userリポジトリの実装
+```
+infrastructure/
+├─ __init__.py
+├─ repository/
+│  └─ user/
+│     ├─ __init__.py
+│     └─ user_repository_impl.py # Userリポジトリ実装
+└─ models/
+   ├─ __init__.py
+   └─ users.py # UserのDBモデル
+```
+
+### ルール
+
+- 集約ごとに`repository/`配下にディレクトリを作成する
+- リポジトリ実装ファイル名は`{集約名}_repository_impl.py`の形式とする
+- データベースやORMライブラリごとに実装を分離する
+- ORMモデルとドメインモデルの変換はリポジトリ実装内で行う
+- `models/`ディレクトリには、使用する技術要素に応じたDBモデルを定義します。
+
+## 2. リポジトリクラスの実装
+
+### 例：UserRepositoryImplの実装
+
+```python
+class UserRepositoryImpl(UserRepository):
+    async def find_by_id(self, user_id: UserId) -> User:
+        user_model = await UserModel.select().where(UserModel.id == user_id.value).first()
+        
+        if user_model is None:
+            raise ExpectedBusinessError(
+                code=UserErrorCode.NotFound,
+                details={"user_id": user_id.value},
+            )
+        
+        # ORMモデルからドメインモデルへの変換
+        return User(
+            id=UserId(value=user_model.id),
+            name=UserName(value=user_model.name),
+            email=EmailAddress(value=user_model.email),
+            role=Role(value=RoleEnum(user_model.role)),
+            created_at=user_model.created_at,
+        )
+    
+    async def save(self, user: User) -> User:
+        try:
+            # ドメインモデルからORMモデルへの変換
+            await UserModel.insert(
+                UserModel(
+                    id=user.id.value,
+                    email=user.email.value,
+                    role=user.role.value.value,
+                    name=user.name.value,
+                    created_at=user.created_at,
+                ),
+            )
+        except Exception as e:
+            if "email" in str(e).lower():
+                raise ExpectedBusinessError(
+                    code=UserErrorCode.EmailAlreadyExists,
+                    details={"email": user.email.value},
+                ) from e
+            raise
+        return user
+    
+    async def delete(self, user_id: UserId) -> UserId:
+        user_model = await UserModel.select().where(UserModel.id == user_id.value).first()
+        
+        if user_model is None:
+            raise ExpectedBusinessError(
+                code=UserErrorCode.NotFound,
+                details={"user_id": user_id.value},
+            )
+        
+        await UserModel.delete().where(UserModel.id == user_id.value)
+        return UserId(value=user_id.value)
+    
+    async def filter(self) -> list[User]:
+        user_models = await UserModel.objects()
+        
+        # リスト内包表記でORMモデルをドメインモデルに変換
+        return [
+            User(
+                id=UserId(value=user_model.id),
+                name=UserName(value=user_model.name),
+                email=EmailAddress(value=user_model.email),
+                role=Role(value=RoleEnum(user_model.role)),
+                created_at=user_model.created_at,
+            )
+            for user_model in user_models
+        ]
+    
+    async def find_by_email(self, email: EmailAddress) -> User:
+        user_model = await UserModel.select().where(UserModel.email == email.value).first()
+        
+        if user_model is None:
+            raise ExpectedBusinessError(
+                code=UserErrorCode.NotFound,
+                details={"email": email.value},
+            )
+        
+        return User(
+            id=UserId(value=user_model.id),
+            name=UserName(value=user_model.name),
+            email=EmailAddress(value=user_model.email),
+            role=Role(value=RoleEnum(user_model.role)),
+            created_at=user_model.created_at,
+        )
+```
+
+### 実装ルール
+
+- クラス名は`{集約名}RepositoryImpl`の形式
+- ドメイン層のリポジトリインターフェースを継承
+- すべてのメソッドを非同期で実装（`async def`）
+- すべての引数と戻り値に型ヒントを付与
+- 存在チェックを削除・更新前に必ず実行
+- 制約エラーは適切なビジネスエラーに分類
+- 例外チェーンを保持（`from e`）
+- エラーメッセージから適切なエラーコードを判定
+- ORMモデルとドメインモデルの変換はリポジトリ実装内で直接行う
+- 変換ロジックが複雑になる場合は、プライベートメソッドに抽出することを検討
+- 型安全性を保つために適切な型ヒントを付与
+- 必要最小限のカラムのみ取得
+- 複雑なクエリは分割して実装
+- パフォーマンスを考慮したクエリ設計
+- 実際のORM操作を直接実装（抽象化しない）

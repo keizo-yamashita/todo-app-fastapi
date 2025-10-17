@@ -1,0 +1,54 @@
+---
+globs: app/backend/**/*.py
+alwaysApply: false
+---
+# ログ実装ガイドライン
+
+## 基本方針
+
+このシステムでは`print()`を使用せず、`src/log/logger.py`の構造化ログを使用する。
+
+## ログの使用方法
+
+### 1. loggerのインポート
+
+```python
+from src.log.logger import logger
+```
+
+### 2. ログレベルの使い分け
+
+```python
+# デバッグ情報（開発時のみ）
+logger.debug("処理開始", user_id=user.id.value)
+
+# 運用時に確認したい情報
+logger.info("ユーザー作成完了", user_id=user.id.value, email=user.email.value)
+
+# 警告（確認が必要だが猶予がある）
+logger.warning("データベーステーブルクリーンアップ失敗", table_name="users", error=str(e))
+
+# エラー（即座に対応が必要）
+logger.error("ユーザー保存エラー", user_id=user.id.value, error=str(e))
+```
+
+## 禁止事項
+
+### print()の使用
+
+```python
+# NG
+print(f"警告: テーブル {table_name} のクリーンアップ失敗: {e}")
+```
+
+### loggerの使用
+
+```python
+# OK
+logger.warning(
+    "テストセットアップ中のテーブルクリーンアップ失敗",
+    table_name=table_name,
+    error=str(e)
+)
+```
+

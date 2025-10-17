@@ -1,0 +1,74 @@
+# Python関連
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.Python
+**/.venv
+**/venv
+**/.env
+**/.pytest_cache
+**/.coverage
+**/*.egg-info
+**/.mypy_cache
+**/.ruff_cache
+
+# テスト関連
+**/.pytest_cache/
+**/.coverage
+**/.tox/
+**/.cache
+**/*.nosetests.xml
+**/*.coverage.xml
+**/*.cover
+**/.hypothesis/
+**/.pytest_cache/
+
+# IDEとエディタ
+**/.vscode
+**/.idea
+**/*.swp
+**/*.swo
+
+# OS関連
+**/.DS_Store
+**/*.DS_Store?
+**/._*
+**/.Spotlight-V100
+**/.Trashes
+**/*.ehthumbs.db
+**/*.Thumbs.db
+
+# Git関連
+**/.git/
+**/.gitignore
+
+# ログファイル
+**/*.log
+
+# 環境変数ファイル
+**/.env
+**/.env.local
+**/.env.development
+**/.env.test
+**/.env.production
+
+# Docker関連
+**/*.Dockerfile*
+**/*.docker-compose*.yml
+**/.dockerignore
+
+# ドキュメント
+**/*.README.md
+**/*.docs/
+**/*.md
+
+# CI/CD
+**/.github/
+**/.gitlab-ci.yml
+
+# その他の設定ファイル
+**/.editorconfig
+**/.flake8
+**/.ruff_cache/
+**/.task/

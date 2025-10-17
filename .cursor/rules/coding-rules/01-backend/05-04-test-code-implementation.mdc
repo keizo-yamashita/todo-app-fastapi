@@ -1,0 +1,322 @@
+---
+globs: app/backend/tests/*/*.py
+alwaysApply: false
+---
+# バックエンドテスト実装ルール
+
+## 概要
+
+このドキュメントは、プロジェクトのバックエンドにおけるテストコード実装のガイドラインです。
+
+## テスト戦略の全体構成
+
+## 1. 単体テスト実装ルール
+
+### 1.1 基本方針
+
+- カバレッジ目標
+  - 85%
+- テストツール
+  - pytest
+- 単体テスト実装方針:
+  - 非同期テストは`asyncio`ではなく`anyio`を使用
+  - 新機能には必ずテストを追加すること
+  - バグ修正時には、そのバグが再発しないことを確認するためのテストを追加すること
+
+### 1.2 対象とスコープ
+
+#### テスト対象
+
+```python
+# ドメイン層（最重要）
+domain/
+├── user/
+│   ├── __init__.py      # テスト不要
+│   ├── user.py          # 必須(Entity)
+│   ├── id.py            # 必須(ValueObject)
+│   ├── email_address.py # 必須(ValueObject)
+│   └── repository.py    # 単体テスト対象外(結合テストで検証)
+
+# ユースケース層（重要）
+use_case/
+└── user/
+    ├── __init__.py           # テスト不要
+    ├── save_user_usecase.py  # 必須
+    └── find_user_usecase.py  # 必須
+```
+
+#### テスト除外対象
+
+```python
+# インフラ層（統合テストで検証）
+infrastructure/
+├── repository/         # 単体テスト対象外とし、リポジトリは結合テストで検証
+
+# プレゼンテーション層（契約テストで検証）
+presentation/
+└── api/                # 単体テスト対象外とし、契約テストで検証
+```
+
+### 1.3 実装例
+
+#### ドメインモデルの単体テスト実装例
+
+```python
+class TestInit:
+    def test_OK_生成できること(self) -> None:
+        # arrange
+        user_id = UserId()
+        email = EmailAddress.random()
+        role = Role()
+        name = UserName.random()
+
+        # act
+        user = User(
+            id=user_id,
+            email=email,
+            role=role,
+            name=name,
+        )
+
+        # assert
+        assert isinstance(user, User)
+
+    def test_OK_各値が渡されない場合はデフォルト値が設定されること(self) -> None:
+        # arrange
+        email = EmailAddress.random()
+
+        # act
+        user = User(email=email, name=UserName(value="山田 太郎"))
+
+        # assert
+        assert user.role == Role()
+        assert user.is_deleted is False
+        assert isinstance(user.id, UserId)
+        assert isinstance(user.created_at, datetime)
+```
+
+#### 値オブジェクトの単体テスト実装例
+
+```python
+import pytest
+
+from src.domain.user.email_address import EmailAddress
+
+
+class TestInit:
+    def test_OK_生成できること(self) -> None:
+        # arrange
+        email_str = "test@example.com"
+
+        # act
+        email = EmailAddress(email_str)
+
+        # assert
+        assert isinstance(email, EmailAddress)
+        assert email.value == email_str
+
+    def test_OK_ランダム生成できること(self) -> None:
+        # arrange & act
+        email = EmailAddress.random()
+
+        # assert
+        assert isinstance(email, EmailAddress)
+
+    @pytest.mark.parametrize(
+        ("email_address"),
+        [
+            pytest.param("", id="空文字"),
+            pytest.param("invalid-email", id="@以降が空"),
+            pytest.param("@example.com", id="ローカルパートが空"),
+            pytest.param("test@", id="ドメインが空"),
+            pytest.param("test@example", id="トップレベルドメインがない"),
+            pytest.param("test@example..com", id="ドメイン内に連続したドット"),
+            pytest.param("test.@example.com", id="ローカルパート末尾のドット"),
+            pytest.param(".test@example.com", id="ローカルパート先頭のドット"),
+            pytest.param(
+                "test..test@example.com", id="ローカルパート内の連続したドット"
+            ),
+            pytest.param("test@example.com.", id="ドメイン末尾のドット"),
+            pytest.param("te st@example.com", id="ローカルパート内のスペース"),
+            pytest.param("test@exam ple.com", id="ドメイン内のスペース"),
+            pytest.param("a" * 65 + "@example.com", id="長すぎるローカルパート"),
+            pytest.param("test@" + "a" * 252 + ".com", id="長すぎるドメイン"),
+        ],
+    )
+    def test_NG_フォーマットが不正な場合はValueErrorが投げられること(
+        self,
+        email_address: str,
+    ) -> None:
+        # act & assert
+        with pytest.raises(ValueError):
+            EmailAddress(email_address)
+```
+
+#### ユースケースの単体テスト実装例
+
+```python
+from unittest.mock import AsyncMock
+from uuid import uuid4
+
+import pytest
+
+from src.domain.user.email_address import EmailAddress
+from src.domain.user.id import UserId
+from src.domain.user.name import UserName
+from src.domain.user.repository import UserRepository
+from src.domain.user.role import Role, RoleEnum
+from src.domain.user.user import User
+from src.presentation.api.schema.user.find_user_request import FindUserRequest
+from src.shared.errors.errors import ExpectedUseCaseError, UserErrorCode
+from src.usecase.user.find_user_usecase import FindUserUseCase
+
+
+@pytest.fixture
+def mock_user_repository() -> AsyncMock:
+    return AsyncMock(spec=UserRepository)
+
+
+class TestExecute:
+    @pytest.mark.anyio
+    async def test_OK(self, mock_user_repository: AsyncMock) -> None:
+        # arrange
+        user_id = str(uuid4())
+        test_user = User(
+            id=UserId(value=user_id),
+            email=EmailAddress(value="test@example.com"),
+            role=Role(value=RoleEnum.MEMBER),
+            name=UserName(value="test_name"),
+        )
+        mock_user_repository.find_by_id.return_value = test_user
+        find_user_usecase = FindUserUseCase(user_repository=mock_user_repository)
+        request = FindUserRequest(user_id=user_id)
+
+        # act
+        result = await find_user_usecase.execute(request)
+
+        # assert
+        assert result == test_user
+        mock_user_repository.find_by_id.assert_called_once_with(UserId(value=user_id))
+
+    @pytest.mark.anyio
+    async def test_NG_ユーザーが存在しない場合はExpectedUseCaseErrorを返すこと(
+        self, mock_user_repository: AsyncMock
+    ) -> None:
+        # arrange
+        mock_user_repository.find_by_id.side_effect = ExpectedUseCaseError(
+            code=UserErrorCode.NotFound,
+            details={"user_id": UserId().value},
+        )
+        find_user_usecase = FindUserUseCase(user_repository=mock_user_repository)
+        request = FindUserRequest(user_id=UserId().value)
+
+        # act & assert
+        with pytest.raises(ExpectedUseCaseError):
+            await find_user_usecase.execute(request)
+```
+
+### 1.4 テストケース(関数)の命名規則
+
+#### クラスによるテストケースのグルーピング
+
+- 各関数ごとに複数のテストケースを作成するため、テスト対象の関数名を元に`class Test{関数名}`のようにクラスでラップします。
+
+```python
+class TestChat:
+  def test_OK_基本ケース(self):
+   pass
+```
+
+#### 正常系テスト
+
+- 正常系の基本テストは`def test_OK(self):`と命名します。
+- 同じ関数の正常系で複数のテストケースがある場合は、`test_OK_{テストする内容}`と追記して明示します。
+
+```python
+class TestChat:
+  def test_OK_xxで正しい結果が返ること(self):
+    # 基本的な正常系テスト
+    pass
+
+  def test_OK_yyで正しい結果が返ること(self):
+    # 追加の正常系テスト
+    pass
+```
+
+#### 異常系テスト
+
+- 異常系のテストは、`def test_NG_{テストする内容}` という形式で命名します。
+  - 例: `def test_NG_不正なメールアドレスを渡した時にInvalidEmailAdressErrorが返ること()`
+
+```python
+class TestUserRegistration:
+    def test_NG_不正なメールアドレスを渡した時にInvalidEmailAdressErrorが返ること(self):
+        # 異常系テストの実装例
+        pass
+```
+
+#### パラメータ化テストの実装方法
+
+- 複数のパラメータで同一のテストロジックを検証する必要がある場合は、`pytest.mark.parametrize` を使用してテストケースを実装してください。
+- 以下は、メールアドレスのフォーマットチェックのテスト例です。
+
+```python
+@pytest.mark.parametrize(
+    ("email_address"),
+    [
+        pytest.param("invalid-email", id="@以降が空"),
+        pytest.param("@example.com", id="ローカルパートが空"),
+        pytest.param("test@", id="ドメインが空"),
+    ],
+)
+def test_NG(email_address: str) -> None:
+    # arrange & act & assert
+    with pytest.raises(ValueError):
+        Email(email_address)
+```
+
+## 2. 契約テスト実装ルール
+
+### 2.1 基本方針
+
+- 目的: APIの仕様に準拠していることを確認する
+- 対象: REST API（FastAPIで実装）
+- 使用ツール: Schemathesis（OpenAPIスキーマ駆動）
+
+### 2.2 実装方法
+
+```python
+"""API契約テスト。
+
+OpenAPIスキーマに基づくAPIコントラクトの検証を行う。
+"""
+
+import pytest
+import schemathesis
+from hypothesis import HealthCheck, settings
+from schemathesis import Case
+
+# OpenAPI 3.1.0 実験的サポートを有効化
+schemathesis.experimental.OPEN_API_3_1.enable()
+
+# テスト対象スキーマ
+schema = schemathesis.from_uri("http://localhost:8000/openapi.json")
+
+
+@settings(
+    deadline=10000,
+    suppress_health_check=[HealthCheck.too_slow],
+)
+@schema.parametrize()
+def test_api_contract_compliance(case: Case) -> None:
+    try:
+        response = case.call()
+        case.validate_response(response)
+    except (ValueError, RuntimeError, ConnectionError, TimeoutError) as e:
+        pytest.fail(f"Contract test failed for {case.method} {case.path}: {e}")
+
+
+if __name__ == "__main__":
+    # 直接実行時の設定
+    pytest.main([__file__, "-v", "--tb=short"])
+```

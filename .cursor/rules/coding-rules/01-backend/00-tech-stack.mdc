@@ -1,0 +1,22 @@
+---
+globs: app/backend/**/*.py
+alwaysApply: false
+---
+
+# バックエンド (FastAPI): 技術スタック
+
+## 技術スタック一覧
+
+| 技術 | バージョン |
+|------|------------|
+| Python | 3.12–3.13 |
+| uv | ~=0.8.0 |
+| FastAPI | ~=0.118.0 |
+| Pydantic | ~=2.11.0 |
+| pytest | ~=8.4.0 |
+| httpx | ~=0.28.0 |
+| pytest-cov | ~=7.0.0 |
+| pyright | ~=1.1.0 |
+| ruff | ~=0.13.0 |
+
+具体的なバージョンやその他の使用パッケージに関しては`pyproject.toml`ファイルを参照してください。

@@ -1,0 +1,144 @@
+---
+globs: app/backend/**/*.py
+alwaysApply: false
+---
+
+# バックエンド (FastAPI): コーディングスタイル
+
+Pythonバックエンド固有のコーディングスタイルルールです。
+`.cursor/rules/coding-rules/00-common/00-common-rules.mdc` よりもさらに詳細なコーディングルールについて記載しています。
+
+## Python固有の命名規則
+
+### 基本的な命名パターン
+- **変数・関数名**: `snake_case`を使用
+- **クラス名**: `PascalCase`を使用  
+- **定数**: `ALL_CAPS_WITH_UNDERSCORES`を使用
+- **プライベート属性**: 先頭に`_`を付与（例: `_private_method`）
+
+## 型ヒント・アノテーション
+
+### 基本的な使用方法
+- すべての関数に**引数と戻り値の型**を明示する
+- Python 3.12+ の構文を使用する
+
+## コメントの書き方
+
+### モジュールレベルのdocstring
+
+ファイルの先頭にモジュールの目的を記載します。
+
+```python
+"""ユーザー検索ユースケース。
+
+IDでユーザーを検索するビジネスロジックを実装する。
+"""
+
+from src.domain.user.repository import UserRepository
+# ...
+```
+
+### クラスレベルのdocstring
+
+クラス定義の直後にクラスの目的を記載します。
+
+```python
+@dataclass
+class User:
+    """システム利用者を表すドメインモデル。
+
+    ユーザーの基本情報と認証情報を保持し、ユーザーに関するビジネスルールを実装する。
+    """
+```
+
+### メソッドレベルのdocstring（Google形式）
+
+すべてのメソッドにGoogle形式のdocstringを記載します。
+
+```python
+async def find_by_id(self, user_id: UserId) -> User:
+    """IDでユーザーを検索する。
+
+    Args:
+        user_id: 検索するユーザーID
+
+    Returns:
+        見つかったユーザー
+
+    Raises:
+        ExpectedBusinessError: ユーザーが見つからない場合
+
+    """
+    user = await UserModel.select().where(UserModel.id == user_id.value).first()
+
+    if user is None:
+        raise ExpectedBusinessError(
+            code=UserErrorCode.NotFound,
+            details={"user_id": user_id.value},
+        )
+
+    return UserMapper.to_domain(user)
+```
+
+### インラインコメント
+
+処理の意図や仕様変更時の注意点を記載します。
+
+```python
+async def save(self, user: User) -> User:
+    """ユーザーを保存する。"""
+    try:
+        db_data = UserMapper.to_db(user)
+        await UserModel.insert(
+            UserModel(
+                id=db_data["id"],
+                email=db_data["email"],
+                role=db_data["role"],
+                name=db_data["name"],
+            ),
+        )
+    except Exception as e:
+        # メールアドレスの一意制約違反の場合、ビジネスエラーに変換
+        if "email" in str(e).lower():
+            raise ExpectedBusinessError(
+                code=UserErrorCode.EmailAlreadyExists,
+                details={"email": user.email.value},
+            ) from e
+        raise
+    return user
+```
+
+### コメント記述のベストプラクティス
+
+#### ✅ 良い例
+
+```python
+# ユーザーが見つからない場合はビジネスエラーを発生
+if user is None:
+    raise ExpectedBusinessError(code=UserErrorCode.NotFound)
+
+# UserModel.objects()の結果をdictのリストに変換
+user_dicts = [user.to_dict() for user in users]
+
+# 管理者は特定のメール形式でないと作成できない
+if not email.endswith("@admin.company.com"):
+    raise ValueError("管理者は@admin.company.comドメインのメールが必要です")
+```
+
+#### ❌ 悪い例
+
+```python
+# NG: 処理内容をそのままなぞるだけのコメント
+# user_idでユーザーを検索する
+user = await UserModel.select().where(UserModel.id == user_id.value).first()
+
+# NG: 冗長なコメント
+# ユーザーをループして処理する
+for user in users:
+    process(user)
+
+# NG: コメントで複雑なロジックを説明（ロジックを改善すべき）
+# Aをチェックして、次にBを確認...
+if complex_condition:
+    pass
+```

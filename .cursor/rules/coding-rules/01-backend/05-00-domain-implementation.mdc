@@ -1,0 +1,184 @@
+---
+globs: app/backend/src/domain/**/*.py
+alwaysApply: false
+---
+# ドメイン層実装ルール
+
+## 概要
+
+ドメイン層の実装ルールを記載します。
+新しいドメインモデルを実装する際は、このルールに従ってください。
+
+> **注記**: このドキュメントのサンプルコードでは、文章量削減のためコメントを省略しています。
+> 実際の実装では、`04-python-coding-style.mdc`に従ってdocstringとインラインコメントを必ず記載してください。
+
+## 1. ディレクトリ構造
+
+### 例：userドメインの実装
+```
+domain/
+├─ __init__.py
+└─ user/
+   ├─ __init__.py
+   ├─ user.py # Userエンティティ
+   ├─ id.py # UserId値オブジェクト
+   ├─ email_address.py # EmailAddress値オブジェクト
+   ├─ name.py # UserName値オブジェクト
+   ├─ role.py # UserRole値オブジェクト
+   └─ repository.py # UserRepositoryインタフェース
+```
+
+### ルール
+
+- 集約ごとにディレクトリを作成する
+- エンティティは集約名と同じファイル名で作成する
+- 値オブジェクトはそれぞれ独立したファイルとして作成する
+- リポジトリインターフェースは1つの集約に1だけ作成する
+
+## 2. エンティティの実装
+
+### 例：Userエンティティの実装
+
+```python
+from __future__ import annotations
+
+@dataclass(eq=False, slots=True)
+class User:
+    id: UserId
+    email: EmailAddress
+    name: UserName
+    role: UserRole
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    def __eq__(self, other: object) -> bool:
+        if self is other:
+            return True
+        if not isinstance(other, User):
+            return NotImplemented
+        return self.id == other.id
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    @staticmethod
+    def create_admin(email: str, name: str) -> User:
+        # 管理者は特定のメール形式でないと作成できない
+        if not email.endswith("@admin.company.com"):
+            raise ValueError("管理者は@admin.company.comドメインのメールが必要です")
+        
+        return User(
+            id=UserId.random(),
+            email=EmailAddress(email),
+            name=UserName(name),
+            role=UserRole.ADMIN,
+        )
+
+    @staticmethod
+    def random() -> User:
+        return User(
+            id=UserId.random(),
+            email=EmailAddress.random(),
+            name=UserName.random(),
+            role=UserRole.GENERAL,
+        )
+```
+
+### 実装ルール
+
+- `@dataclass(eq=False, slots=True)`デコレータを使用
+- すべてのフィールドに型ヒントを付与
+- `__eq__()`、`__hash__()`メソッドを実装（IDベース）
+- `__post_init__()`メソッドでバリデーションを実装
+- IDフィールドはUUID v4を使用
+- 日時フィールドは`datetime`型でUTCを使用
+- 動的なデフォルト値は`field(default_factory=lambda: ...)`で設定
+- 静的なデフォルト値は`field(default=...)`で設定
+- テスト用の静的メソッド`random()`を実装
+
+### ファクトリーメソッドの実装ルール
+
+オブジェクトの生成にビジネスルールや複雑な生成ロジックが伴う場合は、ファクトリーメソッドを静的メソッドとして定義します。
+
+1. 以下の場合に実装
+    1. 生成時のビジネスルールが存在する場合
+    2. 複数のパラメータからの変換が必要な場合
+    3. 生成プロセス自体がドメイン知識を含む場合
+    4. バリデーションロジックが複雑な場合
+
+2. 命名規約
+   - `create_`から始まる静的メソッドとして実装する
+
+3. 責務の分離
+   - ファクトリーメソッドには生成に関するビジネスルールのみを含める
+   - オブジェクト生成後の操作は含めない
+
+4. エラーハンドリング
+   - 生成時のバリデーションエラーは`ValueError`を発生
+   - ビジネスルール違反は適切な例外メッセージを含める
+
+## 3. 値オブジェクトの実装
+
+### 例：UserId値オブジェクトの実装
+
+```python
+from __future__ import annotations
+
+@dataclass(frozen=True, slots=True)
+class UserId:
+    value: str = field(default_factory=lambda: str(uuid.uuid4()))
+    
+    def __post_init__(self) -> None:
+        if not self.value:
+            raise ValueError("user id is empty")
+    
+    @staticmethod
+    def random() -> UserId:
+        return UserId()
+```
+
+### 実装ルール
+
+- `@dataclass(frozen=True, slots=True)`デコレータで不変性を保証
+- `value`属性で実際の値を保持
+- `__post_init__()`メソッドでバリデーションを実装（バリデーションエラーは`ValueError`または`TypeError`）
+- テスト用の静的メソッド`random()`を実装
+
+## 4. リポジトリインターフェースの実装
+
+### 例：UserRepositoryインターフェースの実装
+
+```python
+class UserRepository(ABC):
+    @abstractmethod
+    async def find_by_id(self, user_id: UserId) -> User:
+        pass
+    
+    @abstractmethod
+    async def find_by_email(self, email: EmailAddress) -> User:
+        pass
+    
+    @abstractmethod
+    async def save(self, user: User) -> User:
+        pass
+```
+
+### 実装ルール
+
+- `ABC`を継承して抽象基底クラスとして定義
+- メソッドは`@abstractmethod`デコレータを使用
+- 非同期メソッドとして定義（`async def`）
+
+## 5. Enumの実装
+
+### 例：UserRole Enumの実装
+
+```python
+class UserRole(str, Enum):
+    ADMIN = "ADMIN"
+    GENERAL = "GENERAL"
+```
+
+### 実装ルール
+- `str, Enum` を多重継承
+- 値は大文字のスネークケース

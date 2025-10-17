@@ -1,0 +1,226 @@
+---
+globs: app/backend/**/*.py
+alwaysApply: false
+---
+
+# エラーハンドリングと例外処理
+
+## 概要
+
+このドキュメントは、プロジェクトにおけるエラーハンドリングと例外処理の実装ガイドラインです。
+一貫性のあるエラー処理を実装するために参照してください。
+
+## エラーの分類と階層
+
+### 基本構造
+
+すべてのエラーは`BaseError`を継承し、以下の属性を持ちます：
+
+- `code`: エラーコード（ErrorCode型）
+- `raw_message`: 開発者向けの詳細メッセージ（オプション）
+- `details`: エラーの詳細情報を格納する辞書（オプション）
+
+### エラー種別
+
+```python
+# ビジネスロジックで想定されるエラー
+ExpectedBusinessError
+  - ユーザーが存在しない
+  - メールアドレスが既に登録されている
+  - 権限不足
+
+# 技術的な問題で想定されるエラー
+ExpectedTechnicalError
+  - 認証ヘッダーが見つからない
+  - APIキーが無効
+  - データベース接続エラー
+
+# ユースケース層で想定されるエラー
+ExpectedUseCaseError
+  - ユースケースの前提条件を満たさない
+  - ビジネスルールの違反
+
+# 予期しないエラー
+UnexpectedTechnicalError
+UnexpectedBusinessError
+```
+
+## エラーコードの定義
+
+エラーコードは`src/shared/errors/codes.py`でEnumとして定義します：
+
+```python
+class CommonErrorCode(str, Enum):
+    """共通エラーコード"""
+    Unauthorized = "UNAUTHORIZED"
+    Forbidden = "FORBIDDEN"
+    InvalidValue = "INVALID_VALUE"
+    UnexpectedError = "UNEXPECTED_ERROR"
+    ConfigurationError = "CONFIGURATION_ERROR"
+
+class UserErrorCode(str, Enum):
+    """ユーザー関連エラーコード"""
+    NotFound = "USER_NOT_FOUND"
+    EmailAlreadyExists = "EMAIL_ALREADY_EXISTS"
+    InvalidLoginCredentials = "INVALID_LOGIN_CREDENTIALS"
+```
+
+### 命名規則
+
+- Enumクラス名: `{ドメイン}ErrorCode`
+- 値: 大文字スネークケース（例: `USER_NOT_FOUND`）
+
+## 実装パターン
+
+### 1. リポジトリ層でのエラー処理
+
+```python
+async def find_by_id(self, user_id: UserId) -> User:
+    user = await UserModel.select().where(
+        UserModel.id == user_id.value
+    ).first()
+    
+    if user is None:
+        raise ExpectedBusinessError(
+            code=UserErrorCode.NotFound,
+            details={"user_id": user_id.value},
+        )
+    
+    return self._to_domain_model(user)
+```
+
+### 2. ユースケース層でのエラー変換
+
+```python
+async def execute(self, request: FindUserRequest) -> User:
+    try:
+        return await self._user_repository.find_by_id(request.user_id)
+    except (ExpectedBusinessError, ExpectedTechnicalError) as e:
+        logger.info(
+            "ユーザー検索に失敗しました",
+            raw_message=e.raw_message,
+            details=e.details,
+        )
+        raise ExpectedUseCaseError(code=e.code, details=e.details) from e
+```
+
+### 3. ルーター層でのHTTPステータス変換
+
+```python
+@router.get("/{user_id}")
+async def find_user(
+    user_id: UserId,
+    user_repository: Annotated[UserRepository, Depends(get_user_repository)],
+) -> UserResponse:
+    try:
+        user = await FindUserUseCase(user_repository).execute(
+            FindUserRequest(user_id=user_id)
+        )
+        return UserResponse.model_validate(user, from_attributes=True)
+    except ExpectedUseCaseError as e:
+        if e.code == UserErrorCode.NotFound:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=e.code.value,
+            ) from e
+        raise
+```
+
+## バリデーションエラーの処理
+
+### Pydanticバリデーションエラー
+
+```python
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    errors: dict[str, list[str]] = {}
+    
+    for error in exc.errors():
+        field = ".".join(str(loc) for loc in error["loc"][1:])
+        error_type = error["type"]
+        
+        if field not in errors:
+            errors[field] = []
+        errors[field].append(error_type)
+    
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"errors": errors},
+    )
+```
+
+### カスタムバリデーション
+
+```python
+@dataclass(frozen=True, slots=True)
+class UserName:
+    value: str
+    
+    def __post_init__(self) -> None:
+        if len(self.value) < 1:
+            raise ValueError(
+                f"user name is less than 1 character, name: {self.value}"
+            )
+        if len(self.value) > 255:
+            raise ValueError(
+                f"user name is greater than 255 characters, name: {self.value}"
+            )
+```
+
+## ログ出力
+
+### 構造化ログの使用
+
+```python
+from src.log.logger import logger
+
+logger.error(
+    "ユーザーが見つかりません",
+    user_id=user_id.value,
+    error_code=UserErrorCode.NotFound.value,
+    exc_info=True,
+)
+```
+
+### ログレベルの使い分け
+
+- **DEBUG**: 開発時の詳細情報
+- **INFO**: 正常な処理フローと想定内のエラー
+- **WARNING**: 確認が必要な警告
+- **ERROR**: 即座に対応が必要なエラー
+
+## レスポンス形式
+
+### 成功レスポンス
+
+```json
+{
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "user@example.com",
+    "name": "John Doe"
+}
+```
+
+### エラーレスポンス
+
+#### 4xx系エラー
+
+```json
+{
+    "detail": "USER_NOT_FOUND"
+}
+```
+
+#### バリデーションエラー（422）
+
+```json
+{
+    "errors": {
+        "name": ["string_too_short"],
+        "email": ["invalid_email"]
+    }
+}
+```

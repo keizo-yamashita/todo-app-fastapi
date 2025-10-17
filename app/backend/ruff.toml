@@ -1,0 +1,98 @@
+# 一般的に無視されるディレクトリを除外
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    ".env.example",
+    ".env",
+    "requirements-dev.lock",
+    "requirements.lock",
+    "Dockerfile",
+]
+
+# Blackと同様の設定
+line-length = 88
+indent-width = 4
+
+# Python 3.13を想定
+target-version = "py313"
+
+[lint]
+select = ["ALL"]
+ignore = [
+    "COM812", # 末尾カンマはフォーマッターが統一するため無効化
+    "COM819", # 同上（フォーマッターと重複するスタイル警告）
+    "D104",   # __init__.py（パッケージ）に docstring を必須としない
+    "D106",   # 公開のネストクラスへの docstring を必須としない
+    "D203",   # クラス直後の空行ルールはフォーマッターと競合するため無効化
+    "D205",   # 要約と説明の間の空行必須を強制しない
+    "D211",   # クラス直後の空行必須を強制しない（D203 との矛盾回避）
+    "D212",   # 複数行 docstring の要約を1行目開始に限定しない
+    "D213",   # 複数行 docstring の要約を2行目開始に限定しない（書式は緩める）
+    "D400",   # 要約の行末句読点（ピリオド等）を強制しない
+    "D415",   # 要約行の終止記号（?, !, .）の強制をしない
+    "E111",   # インデント幅ずれはフォーマッターに委ねる
+    "E114",   # 同上：インデント幅ずれ（コメント行など）もフォーマッターに委ねる
+    "E117",   # 同上：過剰インデントもフォーマッターに委ねる
+    "E501",   # 行の長さ（折返し）はフォーマッターに委ねる
+    "EM101",  # 例外メッセージの組み立て方（errmsg系）を厳密には縛らない
+    "EM102",  # 例外メッセージの f-string 等の形式を強制しない
+    "ERA001", # コメントアウトされたコードの検出を無効化
+    "FBT001", # ブール引数を禁止しない
+    "FIX001", # FIX系コメントの検出/自動修正は使わない
+    "FIX002", # 同上（FIX系コメントの検出はルール外）
+    "PT011",  # pytest.raises の match= 必須を強制しない
+    "PT018",  # pytest のアサーション書式最適化（スタイル提案）を強制しない
+    "SIM103", # if-else での True/False 直返しへの単純化を強制しない
+    "TRY003", # 例外メッセージの定義場所/長さのスタイルは強制しない
+    "W191",   # インデントはフォーマッターが統一（タブ/スペース混在の検出は任せない）
+]
+[lint.per-file-ignores]
+"tests/**/**/*.py" = [
+    "PT009", # assertを使った比較は単純なテストでは許可
+    "S101", # テストファイルではassertの使用を許可
+    "PLC2401",# メソッドの非ASCII（日本語/全角など）を許容
+    "N802", # テストファイルでは関数名に日本語を含めることを許可
+    "D102", # テストメソッドではメソッド名にテスト内容を記載しているため、docstringは不要とする
+    "D103", # テストメソッドではメソッド名にテスト内容を記載しているため、docstringは不要とする
+]
+
+# デフォルトでPyflakes（`F`）とpycodestyle（`E`）のサブセットを有効化
+# 有効なルールすべての自動修正を許可（`--fix`が提供された場合）
+fixable = ["ALL"]
+unfixable = []
+
+[format]
+# Blackのように、文字列にはダブルクォートを使用
+quote-style = "double"
+
+# Black同様、タブではなくスペースでインデント
+indent-style = "space"
+
+# Blackのように、マジックトレーリングカンマを尊重
+skip-magic-trailing-comma = false
+
+# Blackのように、適切な行末を自動検出
+line-ending = "auto"

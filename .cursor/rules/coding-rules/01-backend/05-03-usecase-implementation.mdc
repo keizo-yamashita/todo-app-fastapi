@@ -1,0 +1,77 @@
+---
+globs: app/backend/src/usecase/**/*.py
+alwaysApply: false
+---
+# ユースケース層実装ルール
+
+## 概要
+
+ユースケース層の実装ルールを記載します。
+新しいユースケースを実装する際は、このルールに従ってください。
+
+> **注記**: このドキュメントのサンプルコードでは、文章量削減のためコメントを省略しています。
+> 実際の実装では、`04-python-coding-style.mdc`に従ってdocstringとインラインコメントを必ず記載してください。
+
+## 1. ディレクトリ構造
+
+### 例：userユースケースの実装
+```
+usecase/
+├─ __init__.py
+└─ user/
+   ├─ __init__.py
+   ├─ create_user_usecase.py # ユーザー作成
+   ├─ delete_user_usecase.py # ユーザー削除
+   └─ ...
+```
+
+### ルール
+
+- 集約ごとにディレクトリを作成する
+- 各ユースケースは独立したファイルとして実装する
+- ファイル名は`{操作名}_usecase.py`の形式とする
+
+## 2. ユースケースクラスの実装
+
+### 例：DeleteUserUseCaseの実装
+
+```python
+class DeleteUserUseCase:
+    def __init__(
+        self,
+        user_repository: UserRepository,
+    ) -> None:
+        self.user_repository = user_repository
+
+    async def execute(
+        self,
+        request: DeleteUserRequest,
+    ) -> None:
+        try:
+            user = await self.user_repository.find_by_id(UserId(value=request.user_id))
+            await self.user_repository.delete(user_id=user.id)
+        except (ExpectedBusinessError, ExpectedTechnicalError) as e:
+            logger.info(
+                "ユーザー削除に失敗しました",
+                raw_message=e.raw_message,
+                details=e.details,
+            )
+            raise ExpectedUseCaseError(code=e.code, details=e.details) from e
+
+    @staticmethod
+    def is_allowed(current_user: User) -> bool:
+        return current_user.role.value in {
+            RoleEnum.SUPERADMIN,
+            RoleEnum.ADMIN,
+        }
+```
+
+### 実装ルール
+
+- クラス名は`{操作名}UseCase`の形式
+- `__init__`メソッドで依存注入
+- `execute`メソッドでビジネスロジックを実装
+- データベースアクセスなどのI/O操作を効率的に処理するため、非同期メソッドとして定義（`async def`）
+- エラーハンドリングでリポジトリ層のエラーをユースケース層のエラーに変換
+- 想定内エラーのログ出力は`logger.info`を使用し、構造化ログでエラー情報を記録（成功時も`logger.info`を使用可能）
+- 元の例外情報を保持するために、例外チェーンを保持（`raise NewError() from e`）

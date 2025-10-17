@@ -1,0 +1,170 @@
+---
+globs: app/backend/src/presentation/**/*.py
+alwaysApply: false
+---
+# プレゼンテーション層実装ルール
+
+## 概要
+
+プレゼンテーション層の実装ルールを記載します。
+新しいエンドポイントを実装する際は、このルールに従ってください。
+
+> **注記**: このドキュメントのサンプルコードでは、文章量削減のためコメントを省略しています。
+> 実際の実装では、`04-python-coding-style.mdc`に従ってdocstringとインラインコメントを必ず記載してください。
+
+## 1. ディレクトリ構造
+
+### 例：userエンドポイントの実装
+```
+presentation/
+├─ __init__.py
+└─ api/
+   ├─ __init__.py
+   ├─ routes/
+   │  ├─ __init__.py
+   │  ├─ route.py # メインルータ
+   │  └─ user.py # userのルータ
+   └─ schema/
+      ├─ __init__.py
+      ├─ error_response.py # エラーレスポンススキーマ
+      └─ user/ # userのスキーマ
+         ├─ __init__.py
+         ├─ create_user_request.py
+         ├─ create_user_response.py
+         └─ user.py # userのスキーマ
+```
+
+### ルール
+
+- 集約ごとに`routes/`配下にルータファイルを作成する
+- 集約ごとに`schema/`配下にディレクトリを作成する
+- スキーマファイル名は`{操作名}_request.py`、`{操作名}_response.py`の形式とする
+- 集約共通のスキーマは`{集約名}.py`に定義する
+- メインルータ（`route.py`）でサブルータを集約する
+
+## 2. エンドポイントの実装
+
+### 例：ユーザー作成エンドポイントの実装
+
+```python
+from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated
+from pydantic import BaseModel, Field
+
+user_router = APIRouter(tags=["users"])
+
+@user_router.post(
+    "/users",
+    summary="ユーザーを作成する",
+    description="新しいユーザーを作成する",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_201_CREATED: {"model": CreateUserResponse},
+        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
+        status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse},
+        status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": ValidationErrorResponse},
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": ErrorResponse},
+    },
+)
+async def create_user(
+    request: CreateUserRequest,
+    user_repository: Annotated[UserRepository, Depends(get_user_repository)],
+) -> CreateUserResponse:
+    try:
+        user = await CreateUserUseCase(user_repository).execute(request)
+        return CreateUserResponse(
+            user=UserSchema(
+                id=user.id.value,
+                email=user.email.value,
+                name=user.name.value if user.name else "",
+                role=user.role.value.value,
+                created_at=user.created_at,
+            )
+        )
+    except ExpectedUseCaseError as e:
+        if e.code == UserErrorCode.EmailAlreadyExists:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=e.code.value,
+            ) from e
+        raise e from e
+```
+
+### 実装ルール
+
+- ルーター名は`{集約名}_router`の形式
+- タグは集約名を設定
+- `Depends()`を使用して依存注入
+- レスポンス定義は成功・認証・認可・リソース・バリデーション・サーバーエラー等のパターンを網羅
+- ユースケース層からのエラーを適切なHTTPエラーに変換
+
+## 3. スキーマの実装
+
+### 例：スキーマの実装
+
+#### リクエストスキーマ
+
+```python
+from typing import Annotated
+from pydantic import BaseModel, Field
+
+class CreateUserRequest(BaseModel):
+    email: Annotated[
+        str,
+        Field(
+            description="メールアドレス",
+            pattern=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+        )
+    ]
+    name: Annotated[
+        str,
+        Field(description="ユーザー名", min_length=1, max_length=100)
+    ]
+```
+
+#### レスポンススキーマ
+
+```python
+from datetime import datetime
+from typing import Annotated, Literal
+from pydantic import BaseModel, Field
+
+class User(BaseModel):
+    id: Annotated[str, Field(description="ユーザーID")]
+    email: Annotated[str, Field(description="メールアドレス")]
+    role: Annotated[
+        Literal["superadmin", "admin", "member"],
+        Field(description="ロール"),
+    ]
+    name: Annotated[str, Field(description="ユーザー名")]
+    created_at: datetime = Field(description="作成日時")
+```
+
+#### エラーレスポンス
+
+```python
+from pydantic import BaseModel, Field
+
+class ErrorResponse(BaseModel):
+    detail: Annotated[
+        str,
+        Field(description="クライアントに表示するエラーメッセージ"),
+    ]
+
+class ValidationErrorResponse(BaseModel):
+    detail: Annotated[
+        str,
+        Field(description="バリデーションエラーメッセージ"),
+    ]
+    errors: Annotated[
+        dict[str, list[str]],
+        Field(description="バリデーションエラーの詳細"),
+    ]
+```
+
+### 実装ルール
+
+- クラス名は`{操作名}Request/Response`の形式
+- Pydanticの`BaseModel`を継承
+- `Field()`でバリデーションとドキュメントを設定

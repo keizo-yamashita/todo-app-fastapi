@@ -1,0 +1,71 @@
+version: '3'
+
+tasks:
+  # ---------------------------------------------------------------------------
+  # 👩‍💻  日常開発ワークフロー（ホットリロードとファイル同期）
+  # ---------------------------------------------------------------------------
+  up:
+    desc: Start dev stack with Compose Watch (bind-mount + reload)
+    cmds:
+      - docker compose up -d
+    sources:
+      - app/**/**/*
+
+  stop:
+    desc: Stop dev stack and remove volumes/orphans
+    cmds:
+      - docker compose down --volumes --remove-orphans
+
+  down:
+    desc: Stop dev stack and remove volumes/orphans
+    cmds:
+      - docker compose down --volumes --remove-orphans
+
+  restart:
+    desc: Restart dev stack
+    cmds:
+      - docker compose restart
+
+  ps:
+    desc: Show dev stack status
+    cmds:
+      - docker compose ps
+
+  # ---------------------------------------------------------------------------
+  # 🧪  本番環境に近いイメージを使用したローカル統合/E2Eテスト
+  # ---------------------------------------------------------------------------
+  test:
+    desc: Spin up stack → run tests → tear down
+    cmds:
+      - docker compose up -d
+      - docker compose exec backend uv run pytest tests -v --cov=src --cov-report=term
+      - docker compose down --volumes --remove-orphans
+
+  # ---------------------------------------------------------------------------
+  # 🌐  Azure Container Apps / App Serviceへの手動デプロイ
+  # ---------------------------------------------------------------------------
+  deploy:
+    desc: Update ACA with new image tags
+    cmds:
+      - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+      - az acr login --name $ACR_NAME
+      - |
+        az containerapp update --name backend-prod \
+          --image $ACR_URL/backend:${TAG} \
+          --resource-group $RESOURCE_GROUP
+      - |
+        az containerapp update --name console-prod \
+          --image $ACR_URL/console:${TAG} \
+          --resource-group $RESOURCE_GROUP
+    env:
+      TAG: latest
+    requires:
+      vars: [AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID, ACR_NAME, ACR_URL, RESOURCE_GROUP]
+
+  # ---------------------------------------------------------------------------
+  # 🧹  ハウスキーピング（メンテナンス作業）
+  # ---------------------------------------------------------------------------
+  prune:
+    desc: Clean dangling Docker resources
+    cmds:
+      - docker system prune -f

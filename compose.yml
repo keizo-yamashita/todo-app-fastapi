@@ -1,0 +1,36 @@
+services:
+  backend:
+    build:
+      context: ./app/backend
+      dockerfile: Dockerfile.dev
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://user:password@db:5432/template"
+      ENVIRONMENT: "local"
+    ports: ["8000:8000"]
+    volumes:
+      - ./app/backend:/app
+      - /app/.venv
+    working_dir: /app
+    mem_limit: 4g
+    memswap_limit: 4g
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:16.9
+    environment:
+      POSTGRES_DB: template
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-store:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d template"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+
+volumes:
+  db-store:

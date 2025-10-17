@@ -1,0 +1,55 @@
+[project]
+name = "core-api"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.14.0",
+    "asyncpg>=0.30.0",
+    "fastapi[standard]>=0.115.12",
+    "fire>=0.7.0",
+    "greenlet>=3.1.1",
+    "gunicorn>=23.0.0",
+    "pydantic>=2.11.4",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "structlog>=25.3.0",
+    "tenacity>=9.1.2",
+]
+
+[dependency-groups]
+dev = [
+    "anyio>=4.9.0",
+    "core-api",
+    "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
+    "pytest-anyio>=0.0.0",
+    "pytest-cov>=6.2.1",
+    "ruff>=0.11.9",
+    "schemathesis>=3.39.16",
+    "ty>=0.0.1a7",
+]
+
+[tool.uv.sources]
+core-api = { workspace = true }
+
+[tool.pytest.ini_options]
+# テスト設定
+pythonpath = ["."]
+# サードパーティライブラリの Deprecation Warning を抑制
+filterwarnings = [
+    "ignore::DeprecationWarning:schemathesis",
+    "ignore::DeprecationWarning:jsonschema",
+]
+
+[tool.ty.environment]
+python-version = "3.13"
+python = "./.venv"
+extra-paths = ["./src"]
+
+[tool.ty.src]
+root = "."
+
+[tool.ty.rules]
+possibly-unresolved-reference = "warn"
+division-by-zero = "error"
