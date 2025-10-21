@@ -12,11 +12,11 @@ from src.domain.user.name import UserName
 from src.domain.user.repository import UserRepository
 from src.domain.user.role import Role, RoleEnum
 from src.domain.user.user import User
+from src.shared.errors.codes import TechnicalErrorCode, UserErrorCode
 from src.shared.errors.errors import (
     ExpectedBusinessError,
     ExpectedTechnicalError,
     ExpectedUseCaseError,
-    UserErrorCode,
 )
 from src.usecase.user.filter_user_usecase import FilterUserUseCase
 
@@ -100,7 +100,7 @@ class TestExecute:
     ) -> None:
         # arrange
         expected_error = ExpectedTechnicalError(
-            code=UserErrorCode.EmailAlreadyExists,
+            code=TechnicalErrorCode.DatabaseConnectionFailed,
             raw_message="Technical error occurred",
             details={"error": "connection failed"},
         )
@@ -111,6 +111,6 @@ class TestExecute:
         with pytest.raises(ExpectedUseCaseError) as exc_info:
             await filter_user_usecase.execute()
 
-        assert exc_info.value.code == UserErrorCode.EmailAlreadyExists
+        assert exc_info.value.code == TechnicalErrorCode.DatabaseConnectionFailed
         assert exc_info.value.details == {"error": "connection failed"}
         mock_user_repository.filter.assert_called_once()

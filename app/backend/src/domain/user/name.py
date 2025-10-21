@@ -23,12 +23,15 @@ class UserName:
     value: str
 
     def __post_init__(self) -> None:
-        """ユーザー名の長さを検証する。
+        """ユーザー名の長さと有効性を検証する。
 
         Raises:
-            ValueError: ユーザー名が1文字未満または100文字を超える場合
+            ValueError: ユーザー名が1文字未満、100文字を超える、またはnull文字を含む場合
 
         """
+        # null文字を含む場合はエラー
+        if "\x00" in self.value:
+            raise ValueError(f"user name contains null character, name: {self.value!r}")
         if len(self.value) < MIN_USER_NAME_LENGTH:
             raise ValueError(
                 f"user name is less than {MIN_USER_NAME_LENGTH} character, name: {self.value}"
