@@ -15,7 +15,7 @@ from src.domain.user.repository import UserRepository
 from src.domain.user.role import Role, RoleEnum
 from src.domain.user.user import User
 from src.presentation.api.schema.user.create_user_request import CreateUserRequest
-from src.shared.errors.codes import TechnicalErrorCode, UserErrorCode
+from src.shared.errors.codes import CommonErrorCode, TechnicalErrorCode, UserErrorCode
 from src.shared.errors.errors import (
     ExpectedBusinessError,
     ExpectedTechnicalError,
@@ -119,3 +119,29 @@ class TestExecute:
         assert exc_info.value.code == TechnicalErrorCode.DatabaseConnectionFailed
         assert exc_info.value.details == {"error": "database connection failed"}
         mock_user_repository.save.assert_called_once()
+
+    @pytest.mark.anyio
+    async def test_NG_null文字を含むユーザー名の場合ExpectedUseCaseErrorを返すこと(
+        self,
+        mock_user_repository: AsyncMock,
+    ) -> None:
+        """異常系: null文字を含むユーザー名の場合にExpectedUseCaseErrorを返す。
+
+        Pydanticのバリデーションをパスするが、ドメイン層でエラーになるケース。
+        """
+        # arrange
+        request = CreateUserRequest(
+            email="test@example.com",
+            name="test\x00user",  # null文字を含む
+        )
+        create_user_usecase = CreateUserUseCase(user_repository=mock_user_repository)
+
+        # act & assert
+        with pytest.raises(ExpectedUseCaseError) as exc_info:
+            await create_user_usecase.execute(request)
+
+        assert exc_info.value.code == CommonErrorCode.InvalidValue
+        assert "error" in exc_info.value.details
+        assert "null character" in exc_info.value.details["error"]
+        # バリデーションエラーのためリポジトリは呼ばれない
+        mock_user_repository.save.assert_not_called()
