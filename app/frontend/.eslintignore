@@ -1,0 +1,19 @@
+# 依存関係
+node_modules
+
+# Next.js
+.next
+out
+
+# ビルド成果物
+build
+dist
+
+# 環境設定
+.env*.local
+
+# その他
+coverage
+*.config.js
+next-env.d.ts
+
