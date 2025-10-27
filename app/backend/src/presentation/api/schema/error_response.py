@@ -16,7 +16,7 @@ class ErrorResponse(BaseModel):
     一般的なエラー時のレスポンス構造。
     """
 
-    message: Annotated[
+    detail: Annotated[
         SafeStr,
         Field(description="クライアントに表示するエラーメッセージ"),
     ]
