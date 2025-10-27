@@ -223,7 +223,7 @@ async def expected_usecase_error_fallback_handler(
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=ErrorResponse(
-            message=CommonErrorCode.UnexpectedError.value,
+            detail=CommonErrorCode.UnexpectedError.value,
         ).model_dump(),
     )
 
@@ -239,7 +239,7 @@ async def expected_business_error_handler(
     """
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        content=ErrorResponse(message=exc.code.value).model_dump(),
+        content=ErrorResponse(detail=exc.code.value).model_dump(),
     )
 
 
@@ -272,7 +272,7 @@ async def global_exception_handler(
         )
         return JSONResponse(
             status_code=exc.status_code,
-            content=ErrorResponse(message=str(exc.detail)).model_dump(),
+            content=ErrorResponse(detail=str(exc.detail)).model_dump(),
         )
 
     # 5xx系のエラーは予期しない例外なのでerrorレベルでログ
@@ -285,6 +285,6 @@ async def global_exception_handler(
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=ErrorResponse(
-            message=CommonErrorCode.UnexpectedError.value,
+            detail=CommonErrorCode.UnexpectedError.value,
         ).model_dump(),
     )

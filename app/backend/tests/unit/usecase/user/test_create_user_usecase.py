@@ -141,6 +141,7 @@ class TestExecute:
             await create_user_usecase.execute(request)
 
         assert exc_info.value.code == CommonErrorCode.InvalidValue
+        assert exc_info.value.details is not None
         assert "error" in exc_info.value.details
         assert "null character" in exc_info.value.details["error"]
         # バリデーションエラーのためリポジトリは呼ばれない

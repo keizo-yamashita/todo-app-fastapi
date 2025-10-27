@@ -64,13 +64,12 @@ class CreateUserUseCase:
             logger.info(
                 "ユーザー作成完了",
                 user_id=created_user.id.value,
-                email=created_user.email.value,
             )
 
         except ValueError as e:
             # ドメインオブジェクトのバリデーションエラー
             logger.info(
-                "ユーザー作成に失敗しました（バリデーションエラー）",
+                "ユーザー作成に失敗しました(バリデーションエラー)",
                 error=str(e),
             )
             raise ExpectedUseCaseError(
@@ -80,8 +79,7 @@ class CreateUserUseCase:
         except (ExpectedBusinessError, ExpectedTechnicalError) as e:
             logger.info(
                 "ユーザー作成に失敗しました",
-                raw_message=e.raw_message,
-                details=e.details,
+                error_code=e.code.value,
             )
             raise ExpectedUseCaseError(code=e.code, details=e.details) from e
         else:

@@ -63,7 +63,8 @@ async def create_user(
     """
     try:
         user_repository = get_user_repository(session)
-        user = await CreateUserUseCase(user_repository).execute(request)
+        usecase = CreateUserUseCase(user_repository)
+        user = await usecase.execute(request)
         return CreateUserResponse(
             user=UserSchema(
                 id=user.id.value,
@@ -74,12 +75,7 @@ async def create_user(
             ),
         )
     except ExpectedUseCaseError as e:
-        if e.code == UserErrorCode.EmailAlreadyExists:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=e.code.value,
-            ) from e
-        if e.code == CommonErrorCode.InvalidValue:
+        if e.code in (UserErrorCode.EmailAlreadyExists, CommonErrorCode.InvalidValue):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=e.code.value,
@@ -108,7 +104,8 @@ async def filter_user(
     システムに登録されているすべてのユーザーの一覧を返す。
     """
     user_repository = get_user_repository(session)
-    users = await FilterUserUseCase(user_repository).execute()
+    usecase = FilterUserUseCase(user_repository)
+    users = await usecase.execute()
     return FilterUserResponse(
         users=[
             UserSchema(
@@ -153,7 +150,8 @@ async def find_user(
         user_repository = get_user_repository(session)
         # Presentation層でドメイン型に変換
         domain_user_id = UserId(value=user_id)
-        user = await FindUserUseCase(user_repository).execute(domain_user_id)
+        usecase = FindUserUseCase(user_repository)
+        user = await usecase.execute(domain_user_id)
         return FindUserResponse(
             user=UserSchema(
                 id=user.id.value,
@@ -201,7 +199,8 @@ async def delete_user(
     try:
         user_repository = get_user_repository(session)
         domain_user_id = UserId(value=user_id)
-        await DeleteUserUseCase(user_repository).execute(user_id=domain_user_id)
+        usecase = DeleteUserUseCase(user_repository)
+        await usecase.execute(user_id=domain_user_id)
         return DeleteUserResponse(message="ユーザを削除しました")
     except ExpectedUseCaseError as e:
         if e.code == CommonErrorCode.Forbidden:
