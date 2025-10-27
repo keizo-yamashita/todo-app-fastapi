@@ -66,11 +66,11 @@ class CreateUserUseCase:
                 user_id=created_user.id.value,
             )
 
-        except ValueError as e:
+        except (ValueError, TypeError) as e:
             # ドメインオブジェクトのバリデーションエラー
             logger.info(
                 "ユーザー作成に失敗しました(バリデーションエラー)",
-                error=str(e),
+                error_code=CommonErrorCode.InvalidValue.value,
             )
             raise ExpectedUseCaseError(
                 code=CommonErrorCode.InvalidValue,
