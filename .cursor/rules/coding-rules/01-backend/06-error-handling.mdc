@@ -100,8 +100,7 @@ async def execute(self, request: FindUserRequest) -> User:
     except (ExpectedBusinessError, ExpectedTechnicalError) as e:
         logger.info(
             "ユーザー検索に失敗しました",
-            raw_message=e.raw_message,
-            details=e.details,
+            error_code=e.code.value,
         )
         raise ExpectedUseCaseError(code=e.code, details=e.details) from e
 ```
@@ -123,14 +122,13 @@ async def execute(self, request: CreateUserRequest) -> User:
         logger.info(
             "ユーザー作成完了",
             user_id=created_user.id.value,
-            email=created_user.email.value,
         )
         
     except ValueError as e:
         # ドメインオブジェクトのバリデーションエラー
         logger.info(
-            "ユーザー作成に失敗しました（バリデーションエラー）",
-            error=str(e),
+            "ユーザー作成に失敗しました(バリデーションエラー)",
+            error_code=CommonErrorCode.InvalidValue.value,
         )
         raise ExpectedUseCaseError(
             code=CommonErrorCode.InvalidValue,
@@ -139,8 +137,7 @@ async def execute(self, request: CreateUserRequest) -> User:
     except (ExpectedBusinessError, ExpectedTechnicalError) as e:
         logger.info(
             "ユーザー作成に失敗しました",
-            raw_message=e.raw_message,
-            details=e.details,
+            error_code=e.code.value,
         )
         raise ExpectedUseCaseError(code=e.code, details=e.details) from e
     else:
@@ -242,6 +239,10 @@ class UserName:
 ```
 
 ## ログ出力
+
+### 機密情報の取り扱い
+
+**重要**: メールアドレス、パスワード、個人名などのPII（個人情報）や、APIキーなどの機密情報はログに出力しないこと。エラーコードやIDのみを記録する。
 
 ### 構造化ログの使用
 
