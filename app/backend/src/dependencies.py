@@ -16,6 +16,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession]:
     """データベースセッションを取得する。
 
     FastAPIの依存性注入で使用するセッション提供関数。
+    リクエスト成功時は自動的にコミットし、エラー発生時はロールバックする。
 
     Yields:
         AsyncSession: データベースセッション
@@ -24,6 +25,10 @@ async def get_db_session() -> AsyncGenerator[AsyncSession]:
     async with AsyncSessionLocal() as session:
         try:
             yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
         finally:
             await session.close()
 

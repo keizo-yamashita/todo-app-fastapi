@@ -1,10 +1,11 @@
 """APIルートの定義。
 
-ヘルスチェックとユーザー関連のエンドポイントを提供する。
+ヘルスチェック、認証、ユーザー関連のエンドポイントを提供する。
 """
 
 from fastapi import APIRouter
 
+from src.presentation.api.routes.auth import router as auth_router
 from src.presentation.api.routes.user import user_router
 from src.presentation.api.schema.healthz.check_healthz import CheckHealthResponse
 
@@ -25,4 +26,5 @@ async def check_health() -> CheckHealthResponse:
     return CheckHealthResponse(status="OK")
 
 
+router.include_router(auth_router)
 router.include_router(user_router)

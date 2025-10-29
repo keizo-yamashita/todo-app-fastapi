@@ -6,12 +6,13 @@
 from typing import Any
 
 from .codes import (
+    AuthErrorCode,
     CommonErrorCode,
     TechnicalErrorCode,
     UserErrorCode,
 )
 
-type ErrorCode = CommonErrorCode | UserErrorCode | TechnicalErrorCode
+type ErrorCode = CommonErrorCode | UserErrorCode | TechnicalErrorCode | AuthErrorCode
 
 
 class BaseError(Exception):
