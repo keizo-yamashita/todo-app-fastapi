@@ -11,7 +11,10 @@ dependencies = [
     "fire>=0.7.0",
     "greenlet>=3.1.1",
     "gunicorn>=23.0.0",
+    "passlib[bcrypt]>=1.7.4",
     "pydantic>=2.11.4",
+    "python-jose[cryptography]>=3.3.0",
+    "python-multipart>=0.0.20",
     "sqlalchemy[asyncio]>=2.0.36",
     "structlog>=25.3.0",
     "tenacity>=9.1.2",
@@ -53,3 +56,17 @@ root = "."
 [tool.ty.rules]
 possibly-unresolved-reference = "warn"
 division-by-zero = "error"
+
+[tool.pyright]
+# Python バージョン
+pythonVersion = "3.13"
+
+# 型チェック対象から除外するディレクトリ
+exclude = [
+    "**/__pycache__",
+    ".venv",
+    "alembic/versions", # Alembicの自動生成マイグレーションファイルを除外
+]
+
+# 型チェックの厳格度
+typeCheckingMode = "standard"

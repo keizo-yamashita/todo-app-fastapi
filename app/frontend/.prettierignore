@@ -1,0 +1,20 @@
+# 依存関係
+node_modules
+.next
+out
+
+# ビルド成果物
+build
+dist
+.vercel
+
+# 環境ファイル
+.env*.local
+
+# その他
+coverage
+*.log
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+

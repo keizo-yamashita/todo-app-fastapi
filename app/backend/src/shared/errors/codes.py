@@ -39,3 +39,16 @@ class UserErrorCode(str, Enum):
     NotFound = "USER_NOT_FOUND"
     EmailAlreadyExists = "USER_EMAIL_ALREADY_EXISTS"
     UserDeleteError = "USER_DELETE_ERROR"
+
+
+class AuthErrorCode(str, Enum):
+    """認証関連のエラーコード。
+
+    認証・認可に関するエラーコード。
+    """
+
+    CredentialNotFound = "CREDENTIAL_NOT_FOUND"
+    CredentialAlreadyExists = "CREDENTIAL_ALREADY_EXISTS"
+    InvalidCredentials = "INVALID_CREDENTIALS"
+    TokenExpired = "TOKEN_EXPIRED"
+    InvalidToken = "INVALID_TOKEN"

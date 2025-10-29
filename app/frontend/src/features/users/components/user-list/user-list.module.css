@@ -1,0 +1,100 @@
+.container {
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.table thead {
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table td {
+  padding: 12px 16px;
+  border-top: 1px solid #dee2e6;
+  color: #212529;
+}
+
+.table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.idCell {
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  color: #6c757d;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roleBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.roleBadge[data-role='admin'] {
+  background: #e7f5ff;
+  color: #1971c2;
+}
+
+.roleBadge[data-role='user'] {
+  background: #f3f0ff;
+  color: #6741d9;
+}
+
+.deleteButton {
+  padding: 6px 16px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.deleteButton:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.deleteButton:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.empty {
+  text-align: center;
+  padding: 48px 24px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.empty p {
+  color: #6c757d;
+  font-size: 16px;
+  margin: 0;
+}
