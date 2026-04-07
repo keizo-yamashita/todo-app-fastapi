@@ -8,10 +8,11 @@ from typing import Any
 from .codes import (
     CommonErrorCode,
     TechnicalErrorCode,
+    TodoErrorCode,
     UserErrorCode,
 )
 
-type ErrorCode = CommonErrorCode | UserErrorCode | TechnicalErrorCode
+type ErrorCode = CommonErrorCode | UserErrorCode | TodoErrorCode | TechnicalErrorCode
 
 
 class BaseError(Exception):

@@ -39,3 +39,12 @@ class UserErrorCode(str, Enum):
     NotFound = "USER_NOT_FOUND"
     EmailAlreadyExists = "USER_EMAIL_ALREADY_EXISTS"
     UserDeleteError = "USER_DELETE_ERROR"
+
+
+class TodoErrorCode(str, Enum):
+    """Todo関連のエラーコード。
+
+    Todo操作に関するエラーコード。
+    """
+
+    NotFound = "TODO_NOT_FOUND"

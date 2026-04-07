@@ -5,6 +5,7 @@
 
 from fastapi import APIRouter
 
+from src.presentation.api.routes.todo import todo_router
 from src.presentation.api.routes.user import user_router
 from src.presentation.api.schema.healthz.check_healthz import CheckHealthResponse
 
@@ -25,4 +26,5 @@ async def check_health() -> CheckHealthResponse:
     return CheckHealthResponse(status="OK")
 
 
+router.include_router(todo_router)
 router.include_router(user_router)

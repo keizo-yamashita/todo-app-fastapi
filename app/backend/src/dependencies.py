@@ -7,8 +7,10 @@ from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.domain.todo.repository import TodoRepository
 from src.domain.user.repository import UserRepository
 from src.infrastructure.config.database import AsyncSessionLocal
+from src.infrastructure.repository.todo.todo_repository_impl import TodoRepositoryImpl
 from src.infrastructure.repository.user.user_repository_impl import UserRepositoryImpl
 
 
@@ -26,6 +28,13 @@ async def get_db_session() -> AsyncGenerator[AsyncSession]:
             yield session
         finally:
             await session.close()
+
+
+def get_todo_repository(
+    session: AsyncSession,
+) -> TodoRepository:
+    """Todoリポジトリの依存性を提供する。"""
+    return TodoRepositoryImpl(session=session)
 
 
 def get_user_repository(
