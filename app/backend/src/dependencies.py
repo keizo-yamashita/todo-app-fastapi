@@ -50,3 +50,10 @@ def get_user_repository(
 
     """
     return UserRepositoryImpl(session=session)
+
+
+def get_todo_repository(
+    session: AsyncSession,
+) -> TodoRepository:
+    """Todoリポジトリの依存性を提供する。"""
+    return TodoRepositoryImpl(session=session)

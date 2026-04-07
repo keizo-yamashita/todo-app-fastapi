@@ -1,11 +1,11 @@
 """Todo関連のAPIエンドポイント。
 
-Todoの完了フラグ切り替え機能を提供する。
+Todoの検索と完了フラグ切り替え機能を提供する。
 """
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.dependencies import get_db_session, get_todo_repository
@@ -15,15 +15,52 @@ from src.presentation.api.schema.error_response import (
     ValidationErrorResponse,
 )
 from src.presentation.api.schema.safe_str import SafeStr
+from src.presentation.api.schema.todo.search_todos_response import SearchTodosResponse
 from src.presentation.api.schema.todo.todo import Todo as TodoSchema
 from src.presentation.api.schema.todo.toggle_todo_response import ToggleTodoResponse
 from src.shared.errors.codes import TodoErrorCode
 from src.shared.errors.errors import ExpectedUseCaseError
+from src.usecase.todo.search_todos_usecase import SearchTodosUseCase
 from src.usecase.todo.toggle_todo_usecase import ToggleTodoUseCase
 
 todo_router = APIRouter(
     tags=["todos"],
 )
+
+
+@todo_router.get(
+    "/todos",
+    summary="Todoを検索する",
+    description="タイトルでTodoを検索する。クエリなしの場合は全件を返す。",
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_200_OK: {"model": SearchTodosResponse},
+    },
+)
+async def search_todos(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    q: Annotated[str, Query(description="検索クエリ")] = "",
+) -> SearchTodosResponse:
+    """Todoを検索する。
+
+    タイトルに対して部分一致検索を行う。
+    クエリが空の場合は全件を返す。
+    """
+    todo_repository = get_todo_repository(session)
+    usecase = SearchTodosUseCase(todo_repository)
+    todos = await usecase.execute(q)
+    return SearchTodosResponse(
+        todos=[
+            TodoSchema(
+                id=todo.id.value,
+                title=todo.title,
+                completed=todo.completed,
+                created_at=todo.created_at,
+                updated_at=todo.updated_at,
+            )
+            for todo in todos
+        ],
+    )
 
 
 @todo_router.patch(

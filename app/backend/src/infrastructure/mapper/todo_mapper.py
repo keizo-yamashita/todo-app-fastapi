@@ -35,3 +35,8 @@ class TodoMapper:
             "created_at": entity.created_at,
             "updated_at": entity.updated_at,
         }
+
+    @staticmethod
+    def to_domain_list(records: list[dict[str, Any]]) -> list[Todo]:
+        """データベースレコードリストをドメインモデルリストに変換する。"""
+        return [TodoMapper.to_domain(record) for record in records]

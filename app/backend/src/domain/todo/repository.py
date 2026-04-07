@@ -13,28 +13,13 @@ class TodoRepository(ABC):
     """Todoリポジトリのインターフェース。"""
 
     @abstractmethod
+    async def search(self, query: str) -> list[Todo]:
+        """タイトルでTodoを検索する。"""
+
+    @abstractmethod
     async def find_by_id(self, todo_id: TodoId) -> Todo:
-        """IDでTodoを検索する。
-
-        Args:
-            todo_id: 検索するTodoID
-
-        Returns:
-            見つかったTodo
-
-        Raises:
-            ExpectedBusinessError: Todoが見つからない場合
-
-        """
+        """IDでTodoを検索する。"""
 
     @abstractmethod
     async def save(self, todo: Todo) -> Todo:
-        """Todoを保存(更新)する。
-
-        Args:
-            todo: 保存するTodo
-
-        Returns:
-            保存されたTodo
-
-        """
+        """Todoを保存(更新)する。"""

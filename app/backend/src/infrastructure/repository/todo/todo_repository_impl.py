@@ -29,6 +29,27 @@ class TodoRepositoryImpl(TodoRepository):
         """リポジトリを初期化する。"""
         self.session = session
 
+    async def search(self, query: str) -> list[Todo]:
+        """タイトルでTodoを検索する。"""
+        if query:
+            stmt = select(TodoModel).where(TodoModel.title.ilike(f"%{query}%"))
+        else:
+            stmt = select(TodoModel)
+        result = await self.session.execute(stmt)
+        rows = result.scalars().all()
+        return TodoMapper.to_domain_list(
+            [
+                {
+                    "id": row.id,
+                    "title": row.title,
+                    "completed": row.completed,
+                    "created_at": row.created_at,
+                    "updated_at": row.updated_at,
+                }
+                for row in rows
+            ]
+        )
+
     async def find_by_id(self, todo_id: TodoId) -> Todo:
         """IDでTodoを検索する。"""
         stmt = select(TodoModel).where(TodoModel.id == todo_id.value)
