@@ -15,8 +15,8 @@ from src.presentation.api.schema.error_response import (
     ValidationErrorResponse,
 )
 from src.presentation.api.schema.safe_str import SafeStr
-from src.presentation.api.schema.todo.toggle_todo_response import ToggleTodoResponse
 from src.presentation.api.schema.todo.todo import Todo as TodoSchema
+from src.presentation.api.schema.todo.toggle_todo_response import ToggleTodoResponse
 from src.shared.errors.codes import TodoErrorCode
 from src.shared.errors.errors import ExpectedUseCaseError
 from src.usecase.todo.toggle_todo_usecase import ToggleTodoUseCase

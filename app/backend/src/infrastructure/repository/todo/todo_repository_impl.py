@@ -12,9 +12,9 @@ from sqlalchemy import select
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from src.domain.todo.id import TodoId
     from src.domain.todo.todo import Todo
 
-from src.domain.todo.id import TodoId
 from src.domain.todo.repository import TodoRepository
 from src.infrastructure.mapper.todo_mapper import TodoMapper
 from src.infrastructure.models.todo_model import TodoModel

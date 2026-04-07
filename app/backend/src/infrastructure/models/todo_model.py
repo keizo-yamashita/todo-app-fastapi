@@ -30,4 +30,6 @@ class TodoModel(Base):
 
     def __repr__(self) -> str:
         """モデルの文字列表現。"""
-        return f"<TodoModel(id={self.id}, title={self.title}, completed={self.completed})>"
+        return (
+            f"<TodoModel(id={self.id}, title={self.title}, completed={self.completed})>"
+        )
